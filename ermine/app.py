@@ -3,6 +3,7 @@ from ermine.plugs import Pluggable
 from ermine.request import Request
 from ermine.router import BaseRouter
 from ermine.plugs.alternator import Alternator
+from ermine.plugs.event import Eventlistener
 from ermine.static import StaticFiles
 import traceback
 import typing
@@ -21,15 +22,18 @@ class Ermine:
         #
         self.__router = BaseRouter(redirect_slashes, strict)
         self.__alternator = Alternator()
+        self.__event_listener = Eventlistener()
 
     async def __call__(self, scope: dict, receive, send) -> None:
         try:
             if scope["type"] == "lifespan":
                 message = await receive()
                 if message["type"] == "lifespan.startup":
+                    self.__event_listener("startup")
                     self.__event_listener(message["type"])
                     await send({"type": "lifespan.startup.complete"})
                 elif message["type"] == "lifespan.shutdown":
+                    self.__event_listener("shutdown")
                     self.__event_listener(message["type"])
                     await send({"type": "lifespan.shutdown.complete"})
                     return
@@ -104,3 +108,10 @@ class Ermine:
             self.__router.add(f"{prefix}/*filename", plugin, "get", [])
 
         return True
+
+    def on(self, event: str) -> None:
+        def wrapper(handler: typing.Callable) -> typing.Callable:
+            self.__event_listener.add(event, handler)
+            return handler
+
+        return wrapper
