@@ -2,7 +2,7 @@ from . import Pluggable
 import typing
 import inspect
 
-class __Event(typing.NamedTuple):
+class Event(typing.NamedTuple):
     event: str
     handler: typing.Callable
 
@@ -10,16 +10,16 @@ class Eventlistener(Pluggable):
 
     def __init__(self) -> None:
         super().__init__()
-        self.events: typing.List[__Event] = []
+        self.events: typing.List[Event] = []
 
     async def __call__(self, event: str,*args, **kwargs) -> None:
-        for event in self.events:
-            if event.event == event:
-                if inspect.iscoroutinefunction(event.handler):
-                    await event.handler(*args, **kwargs)
+        for ev in self.events:
+            if ev.event == event:
+                if inspect.iscoroutinefunction(ev.handler):
+                    await ev.handler(*args, **kwargs)
                 else:
-                    event.handler(*args, **kwargs)
+                    ev.handler(*args, **kwargs)
 
 
     def add(self, event: str, handler: typing.Callable):
-        self.events.append(__Event(event, handler))
+        self.events.append(Event(event, handler))
