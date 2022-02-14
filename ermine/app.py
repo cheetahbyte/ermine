@@ -29,12 +29,12 @@ class Ermine:
             if scope["type"] == "lifespan":
                 message = await receive()
                 if message["type"] == "lifespan.startup":
-                    self.__event_listener("startup")
-                    self.__event_listener(message["type"])
+                    await self.__event_listener("startup")
+                    await self.__event_listener(message["type"])
                     await send({"type": "lifespan.startup.complete"})
                 elif message["type"] == "lifespan.shutdown":
-                    self.__event_listener("shutdown")
-                    self.__event_listener(message["type"])
+                    await self.__event_listener("shutdown")
+                    await self.__event_listener(message["type"])
                     await send({"type": "lifespan.shutdown.complete"})
                     return
 
