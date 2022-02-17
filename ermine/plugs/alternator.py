@@ -14,7 +14,6 @@ class Alternator(Pluggable):
         req: Request,
         func: typing.Callable[[], typing.Any],
         params: dict,
-        deps: list,
         expect_resp: bool = True
     ) -> Response:
         # if function is none, return
@@ -55,15 +54,14 @@ class Alternator(Pluggable):
         # update arguments with params
         arguments.update(params)
 
-        for dependency in deps:
-            assert isinstance(dependency, Depends)
-            dependency: Depends = dependency
-            va: bool = await self.__call__(req, dependency.dep, {}, [], expect_resp=False)
-            if va:
-                continue
-            else:
-                return TextResponse("Failed check", 500)
-
+        # for dependency in deps:
+        #     assert isinstance(dependency, Depends)
+        #     dependency: Depends = dependency
+        #     va: bool = await self.__call__(req, dependency.dep, {}, [], expect_resp=False)
+        #     if va:
+        #         continue
+        #     else:
+        #         return TextResponse("Failed check", 500)
         if inspect.iscoroutinefunction(func):
             response: typing.Union[Response, typing.Any] = await func(**arguments)
             if not expect_resp:
