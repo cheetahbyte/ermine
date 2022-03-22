@@ -50,7 +50,6 @@ from ermine import Ermine, Request
 
 
 app = Ermine()
-templates = FoxTemplates("templates")
 
 @app.get("/api")
 def api():
@@ -65,6 +64,7 @@ from ermine.responses import HTMLResponse
 
 
 app = Ermine()
+templates = FoxTemplates("templates")
 
 @app.get("/html")
 async def home():
