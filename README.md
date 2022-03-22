@@ -50,7 +50,6 @@ from ermine import Ermine, Request
 
 
 app = Ermine()
-templates = FoxTemplates("templates")
 
 @app.get("/api")
 def api():
@@ -73,7 +72,7 @@ async def home():
 	return HTMLResponse(data)
 ```
 
-You want to use some templates ? You want to load templates? No problem with [Fuchs](https://github.com/cheetahbyte/fuchs)
+You want to use some templates ? You want to load templates? No problem with [Fox](https://github.com/cheetahbyte/fuchs)
 
 ```py
 from ermine import Ermine, Request
