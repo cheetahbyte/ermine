@@ -4,7 +4,7 @@ from ermine.request import Request
 from ermine.plugs.alternator import Alternator
 from ermine.plugs.event import Eventlistener
 from ermine.static import StaticFiles
-from radish import Radish
+from roe_teer import Roeteer
 import traceback
 import typing
 
@@ -19,7 +19,7 @@ class Ermine:
         self.title: str = title
         self.description: str = description
         #
-        self.__router = Radish(trim_trailing_slash=redirect_slashes)
+        self.__router = Roeteer()
         self.__alternator = Alternator()
         self.__event_listener = Eventlistener()
 
@@ -39,8 +39,8 @@ class Ermine:
 
             elif scope["type"] == "http":
                 req = Request(scope, receive, send)
-                route = self.__router.get(req.method, req.path)
-                resp = await self.__alternator(req, route["handler"], route["params"])
+                handler, params = self.__router.resolve(req.method, req.path)[0]
+                resp = await self.__alternator(req, handler, params)
                 await resp(scope, receive, send)
 
         except:
@@ -54,59 +54,88 @@ class Ermine:
 
     def get(self, path: str, dependencies: list = []):
         def wrapper(handler: typing.Callable) -> typing.Callable:
-            self.__router.insert("get", path, handler,)
+            self.__router.get(path, handler)
+            print(self.__router._radix["get"].children)
             return handler
 
         return wrapper
 
     def post(self, path: str, dependencies: list = []):
         def wrapper(handler: typing.Callable) -> typing.Callable:
-            self.__router.insert("post", path, handler)
+            self.__router.post(path, handler)
             return handler
 
         return wrapper
 
     def put(self, path: str, dependencies: list = []):
         def wrapper(handler: typing.Callable) -> typing.Callable:
-            self.__router.insert("put", path, handler)
+            self.__router.put(path, handler)
             return handler
 
         return wrapper
 
     def delete(self, path: str, dependencies: list = []):
         def wrapper(handler: typing.Callable) -> typing.Callable:
-            self.__router.insert("delete", path, handler)
+            self.__router.delete(path, handler)
             return handler
 
         return wrapper
 
-    def route(
-        self, path: str, dependencies: list = [], methods: list | tuple = ("get",)
-    ):
+    def connect(self, path: str, dependencies: list = []):
+        def wrapper(handler: typing.Callable) -> typing.Callable:
+            self.__router.connect(path, handler)
+            return handler
+
+        return wrapper
+
+    def patch(self, path: str, dependencies: list = []):
+        def wrapper(handler: typing.Callable) -> typing.Callable:
+            self.__router.patch(path, handler)
+            return handler
+
+        return wrapper
+
+    def head(self, path: str, dependencies: list = []):
+        def wrapper(handler: typing.Callable) -> typing.Callable:
+            self.__router.head(path, handler)
+            return handler
+
+        return wrapper
+
+    def route(self, path: str, dependencies: list = [], methods: list|tuple = ("get",)):
         def wrapper(handler: typing.Callable) -> typing.Callable:
             for method in methods:
-                self.__router.insert(method, path, handler)
+                self.__router._get_radix(method).insert(path, handler)
             return handler
         return wrapper
 
-    def mount(self, plugin: Pluggable, prefix: str = None) -> None:
-        if prefix and not prefix.startswith("/"):
-            raise Exception("Prefix must start with '/'")
+    # def route(
+    #     self, path: str, dependencies: list = [], methods: list | tuple = ("get",)
+    # ):
+    #     def wrapper(handler: typing.Callable) -> typing.Callable:
+    #         for method in methods:
+    #             self.__router.insert(method, path, handler)
+    #         return handler
+    #     return wrapper
 
-        if isinstance(plugin, Group):
-            prefix = plugin.prefix or prefix
-            if not prefix:
-                raise Exception("Prefix cannot be empty")
-            for path, func, method, deps in plugin.routes:
-                if not self.__router.strict_mode and path.endswith("/"):
-                    path = path[:-1]
-                self.__router.add(f"{prefix}{path}", func, method, deps)
-        if isinstance(plugin, StaticFiles):
-            if not prefix:
-                raise Exception("Prefix cannot be empty")
-            self.__router.add(f"{prefix}/*filename", plugin, "get", [])
+    # def mount(self, plugin: Pluggable, prefix: str = None) -> None:
+    #     if prefix and not prefix.startswith("/"):
+    #         raise Exception("Prefix must start with '/'")
 
-        return True
+    #     if isinstance(plugin, Group):
+    #         prefix = plugin.prefix or prefix
+    #         if not prefix:
+    #             raise Exception("Prefix cannot be empty")
+    #         for path, func, method, deps in plugin.routes:
+    #             if not self.__router.strict_mode and path.endswith("/"):
+    #                 path = path[:-1]
+    #             self.__router.add(f"{prefix}{path}", func, method, deps)
+    #     if isinstance(plugin, StaticFiles):
+    #         if not prefix:
+    #             raise Exception("Prefix cannot be empty")
+    #         self.__router.add(f"{prefix}/*filename", plugin, "get", [])
+
+    #     return True
 
     def on(self, event: str) -> None:
         def wrapper(handler: typing.Callable) -> typing.Callable:

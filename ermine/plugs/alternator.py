@@ -20,6 +20,8 @@ class Alternator(Pluggable):
         if func is None:
             return TextResponse("Not Found", 404)
         
+        for k,v in params.items():
+            params[k] = v.value
 
         # arguments
         arguments: dict = dict()

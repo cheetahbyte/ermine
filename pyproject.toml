@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "ermine"
+version = "0.4.4"
+description = "Nimble trought the web"
+authors = ["Leo Breuer <contact@cheetahbyte.dev>"]
+license = "GPLv2"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+roe-teer = "^0.1.0"
+multidict = "^6.0.4"
+
+[tool.poetry.group.dev.dependencies]
+pydantic = "^1.10.9"
+commitizen = "^3.5.2"
+uvicorn = "^0.22.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
