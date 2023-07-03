@@ -1,10 +1,10 @@
 from ermine.groups import Group
 from ermine.plugs import Pluggable
-from ermine.request import Request
+from ermine.request import Request, WebSocketRequest
 from ermine.plugs.alternator import Alternator
 from ermine.plugs.event import Eventlistener
 from ermine.static import StaticFiles
-from roe_teer import Roeteer
+from roe_teer import Roeteer, n
 import traceback
 import typing
 
@@ -20,6 +20,8 @@ class Ermine:
         self.description: str = description
         #
         self.__router = Roeteer()
+        # TODO: Create method in roeteer to create other trees
+        self.__router._radix["ws"] = n.Node()
         self.__alternator = Alternator()
         self.__event_listener = Eventlistener()
 
@@ -42,6 +44,13 @@ class Ermine:
                 handler, params = self.__router.resolve(req.method, req.path)[0]
                 resp = await self.__alternator(req, handler, params)
                 await resp(scope, receive, send)
+            
+            elif scope["type"] == "websocket":
+                req = WebSocketRequest(scope, receive, send)
+                handler, params = self.__router.resolve(req.method , req.path)
+                resp = await self.__alternator(req, handler, params)
+                await resp(scope, receive, send)
+
 
         except:
             traceback.print_exc()
@@ -107,6 +116,11 @@ class Ermine:
             for method in methods:
                 self.__router._get_radix(method).insert(path, handler)
             return handler
+        return wrapper
+    
+    def websocket(self, path: str) -> None:
+        def wrapper(handler: typing.Callable) -> typing.Callable:
+            self.__router._get_radix("ws").insert(path, handler)
         return wrapper
 
     # def route(
