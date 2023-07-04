@@ -4,7 +4,7 @@ from urllib.parse import parse_qsl
 from multidict import CIMultiDict
 from typing import Optional
 from ermine.enum import ConnectionType
-
+import json
 
 class Request:
     """class representing a request"""
@@ -111,3 +111,46 @@ class Request:
             return json.loads(data)
         except json.decoder.JSONDecodeError:
             return data
+
+class WebSocketRequest:
+    def __init__(self, scope, receive, send) -> None:
+        self._scope = scope
+        self._receive = receive
+        self._send = send
+
+    @property
+    def method(self) -> str:
+        return "ws"
+    
+    @property
+    def path(self) -> str:
+        return self._scope['path']
+
+
+    async def accept(self) -> None:
+        """accepts client on websocket"""
+        await self._send({
+            "type": "websocket.accept"
+        })
+        print("[+] Accepted WebSocket Client")
+
+    async def receive(self) -> str | None:
+        """retrieves whatever the websocket sends in raw"""
+        print("[+] Receiving Message")
+        msg = await self._receive()
+        print(msg)
+        if msg["type"] == "websocket.receive":
+            return msg["text"]
+        else:
+            return None
+        
+    
+    async def receive_json(self) -> dict | None:
+        """parses message to json, returns none if error occurs"""
+        raw = await self.receive()
+        if raw:
+            try:
+                return json.loads(raw)
+            except json.decoder.JSONDecodeError:
+                return None
+        

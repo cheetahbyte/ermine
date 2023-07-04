@@ -15,6 +15,7 @@ multidict = "^6.0.4"
 pydantic = "^1.10.9"
 commitizen = "^3.5.2"
 uvicorn = "^0.22.0"
+wsproto = "^1.2.0"
 
 [build-system]
 requires = ["poetry-core"]
