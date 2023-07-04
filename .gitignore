@@ -1,4 +1,6 @@
-pyproject.toml
+# no sense in uploading the lock file.
+poetry.lock
+#
 main.py
 # Byte-compiled / optimized / DLL files
 __pycache__/
