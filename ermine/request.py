@@ -126,28 +126,35 @@ class Request(BaseRequest):
 
 class WebSocket(BaseRequest):
 
+    def __init__(self, scope: dict, receive, send):
+        super().__init__(scope, receive, send)
+        self.method = "ws"
+
     async def accept(self) -> None:
         """accepts client on websocket"""
         await self._send({
             "type": "websocket.accept"
         })
-        print("[+] Accepted WebSocket Client")
 
-    async def receive(self) -> str | None:
+    async def _receive_raw(self) -> str:
         """retrieves whatever the websocket sends in raw"""
-        print("[+] Receiving Message")
         msg = await self._receive()
-        print(msg)
         if msg["type"] == "websocket.receive":
             return msg["text"]
-        else:
-            return None
 
     async def receive_json(self) -> dict | None:
         """parses message to json, returns none if error occurs"""
-        raw = await self.receive()
+        raw = await self._receive_raw()
         if raw:
             try:
                 return json.loads(raw)
             except json.decoder.JSONDecodeError:
                 return None
+
+    async def receive_text(self) -> str | None:
+        """retrieves message as plain str"""
+        return str(await self._receive_raw())
+
+    async def close(self, status: int = 1000, reason: str = ""):
+        """closes connection to websocket"""
+        await self._send({"type": "websocket.close", "status": status, "reason": reason})
