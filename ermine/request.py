@@ -1,13 +1,15 @@
+import json
 from http.cookies import SimpleCookie
-import json
+from typing import Optional, Any, overload
 from urllib.parse import parse_qsl
-from multidict import CIMultiDict
-from typing import Optional
-from ermine.enum import ConnectionType
-import json
 
-class Request:
-    """class representing a request"""
+from multidict import CIMultiDict
+
+from ermine.enum import ConnectionType
+
+
+class BaseRequest:
+    """class representing a basic request to the server"""
 
     def __init__(self, scope: dict, receive, send) -> None:
         self._receive = receive
@@ -15,19 +17,10 @@ class Request:
         self._scope = scope
         self._req_headers: Optional[CIMultiDict] = None
         self._req_cookies: Optional[SimpleCookie] = None
-        self.http_body: bytes = b""
-        self.__http_has_more_body: bool = True
-        self.__http_received_body_length: int = 0
 
     @property
     def path(self) -> str:
-        """return the path of the request"""
-        return self._scope['path']
-
-    @property
-    def method(self) -> str:
-        """return the method of the request"""
-        return self._scope['method'].lower()
+        return self._scope["path"]
 
     @property
     def headers(self) -> CIMultiDict:
@@ -62,14 +55,32 @@ class Request:
         return self._scope
 
     @property
-    def query(self) -> dict:
+    def query(self) -> CIMultiDict[Any]:
         """return the query of the request"""
         return CIMultiDict(parse_qsl(self.scope.get("query_string", b"").decode("utf-8")))
 
     @property
-    def type(self) -> str:
+    def type(self) -> ConnectionType:
         """return the type of the request"""
         return ConnectionType.ws if self.scope.get("type") == "websocket" else ConnectionType.http
+
+    async def handle(self, message):
+        return NotImplemented
+
+
+class Request(BaseRequest):
+    """class representing a request"""
+
+    def __init__(self, scope: dict, receive, send) -> None:
+        super().__init__(scope, receive, send)
+        self.http_body: bytes = b""
+        self.__http_has_more_body: bool = True
+        self.__http_received_body_length: int = 0
+
+    @property
+    def method(self) -> str:
+        """return the method of the request"""
+        return self._scope['method'].lower()
 
     async def handle(self, message) -> None:
         if message.get("type") == "http.disconnect":
@@ -86,13 +97,13 @@ class Request:
         req_body_length: int | None = (int(self.headers.get("content-length", "0"))
                                        if not self.headers.get("transfer-encoding") == "chunked"
                                        else None)
-        
+
         while self.__http_has_more_body:
             if req_body_length and self.__http_received_body_length > req_body_length:
                 raise Exception("body length exceeded")
 
             message = await self._receive()
-            message_type: str = message.get("type") 
+            message_type: str = message.get("type")
             await self.handle(message)
             if message_type != "http.request":
                 continue
@@ -103,54 +114,57 @@ class Request:
             self.__http_has_more_body = message.get("more_body", False)
             self.__http_received_body_length += len(chunk)
             yield bytes(chunk)
-    
+
     async def body(self) -> bytes | dict:
         """return the body of the request"""
         data: bytes = b"".join([chunk async for chunk in self.__body_iter()])
-        try: 
+        try:
             return json.loads(data)
         except json.decoder.JSONDecodeError:
             return data
 
-class WebSocketRequest:
-    def __init__(self, scope, receive, send) -> None:
-        self._scope = scope
-        self._receive = receive
-        self._send = send
 
-    @property
-    def method(self) -> str:
-        return "ws"
-    
-    @property
-    def path(self) -> str:
-        return self._scope['path']
+class WebSocket(BaseRequest):
 
+    def __init__(self, scope: dict, receive, send):
+        super().__init__(scope, receive, send)
+        self.method = "ws"
 
     async def accept(self) -> None:
         """accepts client on websocket"""
         await self._send({
             "type": "websocket.accept"
         })
-        print("[+] Accepted WebSocket Client")
 
-    async def receive(self) -> str | None:
+    async def _receive_raw(self) -> str:
         """retrieves whatever the websocket sends in raw"""
-        print("[+] Receiving Message")
         msg = await self._receive()
-        print(msg)
         if msg["type"] == "websocket.receive":
             return msg["text"]
-        else:
-            return None
-        
-    
+
     async def receive_json(self) -> dict | None:
         """parses message to json, returns none if error occurs"""
-        raw = await self.receive()
+        raw = await self._receive_raw()
         if raw:
             try:
                 return json.loads(raw)
             except json.decoder.JSONDecodeError:
                 return None
-        
+
+    async def receive_text(self) -> str | None:
+        """retrieves message as plain str"""
+        return str(await self._receive_raw())
+
+    async def send_txt(self, content: str):
+        await self._send({"type": "websocket.send", "text": content})
+
+    async def send_json(self, content: dict):
+        await self._send({"type": "websocket.send", "bytes": json.dumps(content).encode("utf-8")})
+
+    async def _raw_send(self, content: bytes):
+        """send byte content to websocket"""
+        await self._send({"type": "websocket.send", "bytes": content})
+
+    async def close(self, status: int = 1000, reason: str = ""):
+        """closes connection to websocket"""
+        await self._send({"type": "websocket.close", "status": status, "reason": reason})

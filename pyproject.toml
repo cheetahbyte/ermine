@@ -8,7 +8,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-roe-teer = "^0.1.0"
+roe-teer = {git = "https://github.com/cheetahbyte/roe-teer"}
 multidict = "^6.0.4"
 
 [tool.poetry.group.dev.dependencies]
