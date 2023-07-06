@@ -155,15 +155,14 @@ class WebSocket(BaseRequest):
         """retrieves message as plain str"""
         return str(await self._receive_raw())
 
-    @overload
-    async def send(self, content: str):
+    async def send_txt(self, content: str):
         await self._send({"type": "websocket.send", "text": content})
 
-    @overload
-    async def send(self, content: dict):
+    async def send_json(self, content: dict):
         await self._send({"type": "websocket.send", "bytes": json.dumps(content).encode("utf-8")})
 
-    async def send(self, content: bytes):
+    async def _raw_send(self, content: bytes):
+        """send byte content to websocket"""
         await self._send({"type": "websocket.send", "bytes": content})
 
     async def close(self, status: int = 1000, reason: str = ""):
